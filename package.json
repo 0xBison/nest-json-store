@@ -1,6 +1,6 @@
 {
   "name": "nest-json-store",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A simple nest JSON store for postgres",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,16 @@
     "test": "jest",
     "build": "tsc"
   },
-  "keywords": ["nest", "postgres", "json", "store", "kv", "cache", "nestjs", "typeorm"],
+  "keywords": [
+    "nest",
+    "postgres",
+    "json",
+    "store",
+    "kv",
+    "cache",
+    "nestjs",
+    "typeorm"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
