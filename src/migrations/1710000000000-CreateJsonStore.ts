@@ -16,12 +16,12 @@ export class CreateJsonStore1710000000000 implements MigrationInterface {
             type: "jsonb",
           },
           {
-            name: "expirationDate",
+            name: "expiration_date",
             type: "timestamp",
             isNullable: true,
           },
           {
-            name: "createdAt",
+            name: "created_at",
             type: "timestamp",
             default: "CURRENT_TIMESTAMP(6)",
           },
