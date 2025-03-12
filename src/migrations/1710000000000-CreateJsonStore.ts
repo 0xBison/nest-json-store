@@ -25,6 +25,11 @@ export class CreateJsonStore1710000000000 implements MigrationInterface {
             type: "timestamp",
             default: "CURRENT_TIMESTAMP(6)",
           },
+          {
+            name: "updated_at",
+            type: "timestamp",
+            default: "CURRENT_TIMESTAMP(6)",
+          },
         ],
       }),
       true

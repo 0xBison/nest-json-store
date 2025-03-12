@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from "typeorm";
 
 @Entity({ name: "json_store" })
 export class JsonStoreEntity {
@@ -24,4 +30,11 @@ export class JsonStoreEntity {
     default: () => "CURRENT_TIMESTAMP(6)",
   })
   public createdAt: Date;
+
+  @UpdateDateColumn({
+    name: "updated_at",
+    type: "timestamp",
+    default: () => "CURRENT_TIMESTAMP(6)",
+  })
+  public updatedAt: Date;
 }

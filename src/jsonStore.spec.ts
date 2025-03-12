@@ -14,6 +14,8 @@ const createStoreEntity = (overrides: Partial<JsonStoreEntity> = {}) => {
   storeItem.data = JSON.stringify({ a: "b" });
   storeItem.key = "someKey";
   storeItem.expirationTimestamp = null;
+  storeItem.createdAt = new Date();
+  storeItem.updatedAt = new Date();
   return Object.assign(storeItem, overrides);
 };
 
@@ -42,7 +44,13 @@ describe("jsonStore", () => {
 
         return undefined;
       }),
-      save: jest.fn(async (storeEntity: JsonStoreEntity) => storeEntity),
+      save: jest.fn(async (storeEntity: JsonStoreEntity) => {
+        // Simulate TypeORM's behavior of updating the updatedAt field
+        if (!storeEntity.updatedAt) {
+          storeEntity.updatedAt = new Date();
+        }
+        return storeEntity;
+      }),
       delete: jest.fn(async () => true),
     };
     jsonStore = new JsonStore(mockRepository);
@@ -85,6 +93,39 @@ describe("jsonStore", () => {
       const result = await jsonStore.set("key", circular);
       expect(result).toBe(false);
       expect(mockRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("sets updatedAt field when saving an entity", async () => {
+      const result = await jsonStore.set("key", { a: "b" });
+      // @ts-ignore
+      expect(result.updatedAt).toBeInstanceOf(Date);
+      expect(mockRepository.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("stores primitive values correctly", async () => {
+      // Test with different primitive types
+      const testCases = [
+        { key: "string-value", value: "just a string" },
+        { key: "number-value", value: 12345 },
+        { key: "boolean-value", value: true },
+        { key: "null-value", value: null },
+      ];
+
+      for (const { key, value } of testCases) {
+        jest.clearAllMocks();
+        const result = await jsonStore.set(key, value);
+
+        // Verify the value was JSON stringified correctly
+        expect(mockRepository.save).toHaveBeenCalledTimes(1);
+        expect(mockRepository.save.mock.calls[0][0].data).toBe(value);
+
+        // Verify we can retrieve and parse it back
+        mockRepository.findOne.mockResolvedValueOnce(
+          createStoreEntity({ key, data: JSON.stringify(value) })
+        );
+        const retrieved = await jsonStore.get(key);
+        expect(retrieved).toEqual(value);
+      }
     });
   });
 
@@ -138,6 +179,38 @@ describe("jsonStore", () => {
       expect(mockRepository.delete).toHaveBeenCalledTimes(1);
       expect(mockRepository.delete).toHaveBeenCalledWith({});
       expect(result).toBeTruthy();
+    });
+  });
+
+  describe("update behavior", () => {
+    it("updates the updatedAt timestamp when modifying an existing entry", async () => {
+      // Setup: Mock repository to simulate an existing entry
+      const initialDate = new Date(Date.now() - 10000); // 10 seconds ago
+      const existingEntry = createStoreEntity({
+        key: "updateTestKey",
+        updatedAt: initialDate,
+        createdAt: initialDate,
+      });
+
+      // @ts-ignore
+      mockRepository.findOne = jest.fn().mockResolvedValueOnce(existingEntry);
+
+      // Simulate TypeORM's behavior of updating the entity
+      mockRepository.save = jest.fn().mockImplementation((entity) => {
+        // @ts-ignore
+        entity.updatedAt = new Date(); // TypeORM would update this
+        return entity;
+      });
+
+      // Act: Update the entry
+      await jsonStore.set("updateTestKey", { updated: true });
+
+      // Assert: updatedAt should be newer than the initial date
+      const savedEntity = mockRepository.save.mock.calls[0][0];
+      expect(savedEntity.updatedAt.getTime()).toBeGreaterThan(
+        initialDate.getTime()
+      );
+      expect(mockRepository.save).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -41,7 +41,14 @@ export class JsonStore {
       return undefined;
     }
 
-    return JSON.parse(storeEntry.data) as T;
+    // Try to parse as JSON, but if it fails, return the raw value
+    // This handles primitive values that were stored directly
+    try {
+      return JSON.parse(storeEntry.data) as T;
+    } catch (e) {
+      // If parsing fails, it's likely a primitive value
+      return storeEntry.data as unknown as T;
+    }
   }
 
   /**
@@ -56,7 +63,16 @@ export class JsonStore {
 
     let jsonValue: string;
     try {
-      jsonValue = JSON.stringify(value);
+      // Check if value is an object (including arrays) or a primitive
+      const isObject = value !== null && typeof value === "object";
+
+      if (isObject) {
+        // For objects and arrays, use JSON.stringify
+        jsonValue = JSON.stringify(value);
+      } else {
+        // For primitives (string, number, boolean, null, undefined), store directly
+        jsonValue = value as any;
+      }
     } catch (e) {
       this.logger.error(`Failed to JSON.stringify value for key '${key}'`, e);
       return false;

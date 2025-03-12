@@ -108,6 +108,75 @@ await jsonStore.set('key', value, { ttl: 3600 });
 await jsonStore.set('key', value, { ttl: 0 });
 ```
 
+### JsonStore Cleanup Service
+
+#### Why It's Needed
+
+The JsonStore service deletes expired entries only when they are retrieved. This on-demand approach is efficient for frequently accessed and a pre-defined set of keys. But it can lead to database bloat if you have dynamic keys and many expire without being accessed. The JsonStoreCleanupService solves this by periodically removing all expired entries.
+
+#### Usage
+
+To enable automatic cleanup, register the JsonStoreModule with cleanup options:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { JsonStoreModule } from 'nest-json-store';
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      // your database configuration
+    }),
+    JsonStoreModule.register({
+      enableCleanup: true,
+      cleanupOptions: {
+        interval: 3600, // Run cleanup every hour (in seconds)
+        runOnInit: true // Run cleanup when the application starts
+      }
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+#### Configuration Options
+
+The cleanup service accepts the following options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `interval` | number | 3600 | Time between cleanup runs in seconds |
+| `runOnInit` | boolean | true | Whether to run cleanup when the module initializes |
+
+#### Manual Cleanup
+
+You can also inject the cleanup service and trigger cleanup manually:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { JsonStoreCleanupService } from 'nest-json-store';
+
+@Injectable()
+export class YourService {
+  constructor(private readonly cleanupService: JsonStoreCleanupService) {}
+
+  async performMaintenance() {
+    // Manually trigger cleanup
+    const deletedCount = await this.cleanupService.cleanup();
+    console.log(`Cleaned up ${deletedCount} expired entries`);
+  }
+}
+```
+
+#### Best Practices
+
+- For production environments with many stored keys, always enable the cleanup service
+- Set the interval based on your application's needs:
+  - Shorter intervals (e.g., 15-30 minutes) for applications with many short-lived keys
+  - Longer intervals (e.g., 6-12 hours) for applications with mostly long-lived keys
+- Consider running cleanup during off-peak hours if your database is under heavy load
+
 ### API Reference
 
 #### `JsonStore`
@@ -129,6 +198,23 @@ await jsonStore.set('key', value, { ttl: 0 });
 
 - `clear(): Promise<DeleteResult>`
   - Removes all entries from the store
+
+#### `JsonStoreCleanupService`
+
+- `cleanup(): Promise<number>`
+  - Manually triggers a cleanup of all expired entries
+  - Returns the number of deleted entries
+  - Useful for on-demand maintenance or scheduled jobs
+
+- `onModuleInit(): Promise<void>`
+  - Lifecycle hook that initializes the cleanup schedule
+  - Runs cleanup immediately if `runOnInit` is true
+  - Sets up the interval-based cleanup schedule
+
+- `onModuleDestroy(): void`
+  - Lifecycle hook that cleans up resources
+  - Cancels any scheduled cleanup tasks
+  - Automatically called when the application shuts down
 
 ## Contributing
 
